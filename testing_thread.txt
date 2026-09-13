@@ -1,0 +1,56 @@
+Gunslugs 2 - PortMaster testing
+Porter: Pixelforge ports (Ronax)
+
+Game: https://www.gog.com/en/game/gunslugs_2
+Package: Gunslugs2.zip (BYO data; attach the built ZIP to this post)
+
+Install:
+Update PortMaster, put Gunslugs2.zip in its autoinstall folder and open PortMaster.
+Stay online for the Java 17 and Westonpack downloads if needed.
+Supply Gunslugs2.jar from your owned Windows build (fingerprint listed below).
+Destination: <ports directory>/gunslugs2/Gunslugs2.jar.
+On muOS: <SD card>/ports/gunslugs2/Gunslugs2.jar.
+Download the full Windows offline installer from your GOG library, install it
+on Windows or extract with innoextract, then copy the archive unchanged.
+See the installed gunslugs2.md for the checksum and manual installation instructions.
+
+Controls:
+| Control | Keyboard input / action |
+|---|---|
+| D-pad up | UP / Up / navigate |
+| D-pad down | DOWN / Down / navigate |
+| D-pad left | LEFT / Left / navigate |
+| D-pad right | RIGHT / Right / navigate |
+| A | X / Action / confirm |
+| B | Z |
+| X | UP / Up / navigate |
+| Y | DOWN / Down / navigate |
+| L1 | X / Action / confirm |
+| R1 | Z |
+| L2 | X / Action / confirm |
+| R2 | Z |
+| Start | O / Options |
+| Select | ESC / Back / pause |
+| Left stick | Same directions as the D-pad |
+| Select + Start | Exit; save through the game first |
+
+Use the game's default keyboard bindings. Start sends **O** for options.
+
+Testing checklist for this build (please include exact device and firmware version):
+[ ] muOS: RG34XX SP / other RGXX device
+[ ] ArkOS / dArkOS: R36S
+[ ] AmberELEC
+[ ] ROCKNIX: specify graphics driver
+[ ] Knulli
+[ ] Other compatible ARM64 firmware
+[ ] 640x480
+[ ] 720x480
+[ ] 720x720
+[ ] 1024x768
+[ ] 1280x720
+
+Please test startup, menus, all controls, sound/music, normal gameplay speed,
+save/reload, suspend/resume and exit. Report performance during actual gameplay.
+
+For failures attach gunslugs2/log.txt and steps to reproduce.
+Do not upload purchased game files, installers or personal information.

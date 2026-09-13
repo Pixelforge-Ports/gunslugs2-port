@@ -1,0 +1,43 @@
+{
+  "version": 4,
+  "name": "gunslugs2.zip",
+  "items": [
+    "Gunslugs 2.sh",
+    "gunslugs2"
+  ],
+  "items_opt": [],
+  "attr": {
+    "title": "Gunslugs 2",
+    "porter": [
+      "Pixelforge ports (Ronax)"
+    ],
+    "desc": "Run, jump and shoot through chaotic action-platforming missions against the Black Duck Army.",
+    "desc_md": null,
+    "inst": "Install Gunslugs2.zip, then copy your owned Gunslugs2.jar into the installed gunslugs2 folder. See gunslugs2.md for supported files and installation steps. Requires compatible 64-bit ARM firmware and PortMaster Java 17 and Westonpack runtimes.",
+    "inst_md": null,
+    "genres": [
+      "action",
+      "platformer"
+    ],
+    "image": null,
+    "rtr": false,
+    "exp": false,
+    "runtime": [
+      "weston_pkg_0.2.squashfs",
+      "zulu17.54.21-ca-jre17.0.13-linux.squashfs"
+    ],
+    "reqs": [],
+    "arch": [
+      "aarch64"
+    ],
+    "min_glibc": "2.27",
+    "availability": "paid",
+    "store": [
+      {
+        "name": "GOG",
+        "gameurl": "https://www.gog.com/en/game/gunslugs_2",
+        "developerurl": "https://orangepixel.net/"
+      }
+    ]
+  }
+}

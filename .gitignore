@@ -1,0 +1,21 @@
+build/
+dist/
+package/gunslugs2/Gunslugs2.jar
+package/gunslugs2/runtime/*.jar
+package/gunslugs2/saves/
+package/gunslugs2/cache/
+package/gunslugs2/resolution.txt
+package/gunslugs2/log.txt
+__pycache__/
+*.pyc
+
+# Generated/private content
+ports/
+build/
+dist/
+package/gunslugs2/Gunslugs2.jar
+package/gunslugs2/runtime/*-host.jar
+package/gunslugs2/saves/
+package/gunslugs2/cache/
+package/gunslugs2/log.txt
+package/gunslugs2/resolution.txt
