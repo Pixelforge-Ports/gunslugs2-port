@@ -12,7 +12,7 @@ def public_files(root):
     config = settings(root)
     package = root/'package'
     game = config['id']
-    names = [config['script'], 'port.json', 'README.md', 'gameinfo.xml', 'screenshot.png',
+    names = [config['script'], 'port.json', 'README.md', 'gameinfo.xml', 'screenshot.png', 'cover.png',
              game+'/display.inc', game+'/'+config['mapping'],
              game+'/runtime/'+game+'-host.jar']
     names += [p.relative_to(package).as_posix()
