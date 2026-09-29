@@ -13,8 +13,8 @@
     ],
     "desc": "Run, jump and shoot through chaotic action-platforming missions against the Black Duck Army.",
     "desc_md": null,
-    "inst": "Install Gunslugs2.zip, then copy your owned Gunslugs2.jar into the installed gunslugs2 folder. See gunslugs2.md for supported files and installation steps. Requires compatible 64-bit ARM firmware and PortMaster Java 17 and Westonpack runtimes.",
-    "inst_md": null,
+    "inst": "Install Gunslugs2.zip with PortMaster on compatible 64-bit ARM Linux firmware. Connect to the network for Java 17 and Westonpack if they are not installed. Obtain the full Windows offline backup installer from your owned GOG library; install it or extract it with innoextract. Copy the unchanged Gunslugs2.jar to <ports directory>/gunslugs2/gamedata/Gunslugs2.jar. The supported archive is identified by its SHA-256 fingerprint below; other builds require a compatibility check.",
+    "inst_md": "## Installation\n\nInstall Gunslugs2.zip with PortMaster on compatible 64-bit ARM Linux firmware. Connect to the network for Java 17 and Westonpack if they are not installed. Obtain the full Windows offline backup installer from your owned GOG library; install it or extract it with innoextract. Copy the unchanged Gunslugs2.jar to <ports directory>/gunslugs2/gamedata/Gunslugs2.jar. The supported archive is identified by its SHA-256 fingerprint below; other builds require a compatibility check.\n\n## Supported Windows build\n\nGOG full Windows offline backup installer containing a Gunslugs2.jar that matches the verified SHA-256 fingerprint below.\n\nThe supported archive SHA-256 is `8f92f9ea2f84b055be744f98b911dbcdc6f8199bd1ec75b54338bff3ffffa913`. Keep the original game data intact. Do not include the game files in the PortMaster ZIP or share them.\n",
     "genres": [
       "action",
       "platformer"
@@ -26,18 +26,18 @@
       "weston_pkg_0.2.squashfs",
       "zulu17.54.21-ca-jre17.0.13-linux.squashfs"
     ],
-    "reqs": [],
-    "arch": [
-      "aarch64"
-    ],
-    "min_glibc": "2.27",
-    "availability": "paid",
-    "store": [
+	"store": [
       {
         "name": "GOG",
         "gameurl": "https://www.gog.com/en/game/gunslugs_2",
         "developerurl": "https://orangepixel.net/"
       }
-    ]
+    ],
+    "availability": "paid",
+    "reqs": [],
+    "arch": [
+      "aarch64"
+    ],
+    "min_glibc": "2.27"
   }
 }

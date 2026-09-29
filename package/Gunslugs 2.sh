@@ -16,6 +16,7 @@ source "$controlfolder/control.txt"
 get_controls
 
 GAMEDIR="/${directory#/}/ports/gunslugs2"
+GAMEDATADIR="$GAMEDIR/gamedata"
 java_runtime="zulu17.54.21-ca-jre17.0.13-linux"
 jar_filename="Gunslugs2.jar"
 
@@ -25,99 +26,67 @@ exec > >(tee "$GAMEDIR/log.txt") 2>&1
 SAVEDIR="$GAMEDIR/saves/"
 CACHEDIR="$GAMEDIR/cache/"
 
+$ESUDO mkdir -p "$SAVEDIR" "$CACHEDIR" || { pm_message "Gunslugs 2: Cannot create game data and save folders. See gunslugs2/log.txt."; sleep 5; exit 1; }
+[ "$DEVICE_ARCH" = aarch64 ] || { pm_message "Gunslugs 2: 64-bit ARM firmware is required. See gunslugs2/log.txt."; sleep 5; exit 1; }
+[ "$(getconf LONG_BIT)" = 64 ] || { pm_message "Gunslugs 2: 64-bit userland is required. See gunslugs2/log.txt."; sleep 5; exit 1; }
+[ -f "$GAMEDIR/$jar_filename" ] || { pm_message "Gunslugs 2: Copy your owned Gunslugs 2.jar to gunslugs2/gamedata/Gunslugs 2.jar. See gunslugs2/log.txt."; sleep 5; exit 1; }
+[ -n "$GPTOKEYB2" ] || { pm_message "Gunslugs 2: Update PortMaster for controller support. See gunslugs2/log.txt."; sleep 5; exit 1; }
+
 weston_dir=/tmp/weston
-export JAVA_HOME="/tmp/javaruntime/"
-weston_mounted=0
-java_mounted=0
-weston_started=0
-mapper_pid=""
 
-cleanup() {
-  if [ -n "$mapper_pid" ]; then
-    kill "$mapper_pid" 2>/dev/null
-    wait "$mapper_pid" 2>/dev/null
-    mapper_pid=""
-  fi
-  if [ "$weston_started" = 1 ]; then
-    $ESUDO "$weston_dir/westonwrap.sh" cleanup
-  fi
-
-  if [ "$PM_CAN_MOUNT" != N ]; then
-    if [ "$java_mounted" = 1 ]; then
-      $ESUDO umount "$JAVA_HOME"
-    fi
-    if [ "$weston_mounted" = 1 ]; then
-      $ESUDO umount "$weston_dir"
-    fi
-  fi
-  pm_finish
-}
-
-fail() {
-  pm_message "Gunslugs 2: $* See gunslugs2/log.txt."
-  sleep 5
-  cleanup
-  exit 1
-}
-$ESUDO mkdir -p "$SAVEDIR" "$CACHEDIR" || fail "Cannot create save folders."
-[ "$DEVICE_ARCH" = aarch64 ] || fail "64-bit ARM firmware is required."
-[ "$(getconf LONG_BIT)" = 64 ] || fail "64-bit userland is required."
-[ -f "$GAMEDIR/$jar_filename" ] || fail "Copy your owned Gunslugs2.jar to gunslugs2/Gunslugs2.jar."
-[ -n "$GPTOKEYB2" ] || fail "Update PortMaster for controller support."
-
-$ESUDO mkdir -p "${weston_dir}" || fail "Cannot create Weston directory."
+$ESUDO mkdir -p "${weston_dir}" || { pm_message "Gunslugs 2: Cannot create Weston directory. See gunslugs2/log.txt."; sleep 5; exit 1; }
 weston_runtime="weston_pkg_0.2"
 if [ ! -f "$controlfolder/libs/${weston_runtime}.squashfs" ]; then
   if [ ! -f "$controlfolder/harbourmaster" ]; then
-    fail "This port requires the latest PortMaster to run, please go to https://portmaster.games/ for more info."
+     { pm_message "Gunslugs 2: This port requires the latest PortMaster to run, please go to https://portmaster.games/ for more info. See gunslugs2/log.txt."; sleep 5; exit 1; }
   fi
-  $ESUDO "$controlfolder/harbourmaster" --quiet --no-check runtime_check "${weston_runtime}.squashfs" || fail "Cannot download Weston."
+  $ESUDO "$controlfolder/harbourmaster" --quiet --no-check runtime_check "${weston_runtime}.squashfs" || { pm_message "Gunslugs 2: Cannot download Weston. See gunslugs2/log.txt."; sleep 5; exit 1; }
 fi
 if [[ "$PM_CAN_MOUNT" != "N" ]]; then
     $ESUDO umount "${weston_dir}" 2>/dev/null || true
 fi
 $ESUDO mount "$controlfolder/libs/${weston_runtime}.squashfs" "$weston_dir" \
-  || fail "Cannot mount Weston."
-weston_mounted=1
+  || { pm_message "Gunslugs 2: Cannot mount Weston. See gunslugs2/log.txt."; sleep 5; exit 1; }
 
-$ESUDO mkdir -p "${JAVA_HOME}" || fail "Cannot create Java directory."
+export JAVA_HOME="/tmp/javaruntime/"
+
+$ESUDO mkdir -p "${JAVA_HOME}" || { pm_message "Gunslugs 2: Cannot create Java directory. See gunslugs2/log.txt."; sleep 5; exit 1; }
 if [ ! -f "$controlfolder/libs/${java_runtime}.squashfs" ]; then
   if [ ! -f "$controlfolder/harbourmaster" ]; then
-    fail "This port requires the latest PortMaster to run, please go to https://portmaster.games/ for more info."
+    { pm_message "Gunslugs 2: This port requires the latest PortMaster to run, please go to https://portmaster.games/ for more info. See gunslugs2/log.txt."; sleep 5; exit 1; }
   fi
-  $ESUDO "$controlfolder/harbourmaster" --quiet --no-check runtime_check "${java_runtime}.squashfs" || fail "Cannot download Java."
+  $ESUDO "$controlfolder/harbourmaster" --quiet --no-check runtime_check "${java_runtime}.squashfs" || { pm_message "Gunslugs 2: Cannot download Java. See gunslugs2/log.txt."; sleep 5; exit 1; }
 fi
 if [[ "$PM_CAN_MOUNT" != "N" ]]; then
     $ESUDO umount "${JAVA_HOME}" 2>/dev/null || true
 fi
 $ESUDO mount "$controlfolder/libs/${java_runtime}.squashfs" "$JAVA_HOME" \
-  || fail "Cannot mount Java."
-java_mounted=1
+  || { pm_message "Gunslugs 2: Cannot mount Java. See gunslugs2/log.txt."; sleep 5; exit 1; }
 export PATH="$JAVA_HOME/bin:$PATH"
 
-cd "$GAMEDIR" || fail "Cannot open the game directory."
-
-"$JAVA_HOME/bin/java" -Xmx64m -cp runtime/gunslugs2-host.jar org.portmaster.gunslugs2.VerifyGame "$GAMEDIR/$jar_filename" || fail "Unsupported or damaged game JAR. Check the README checksum."
-source "$GAMEDIR/display.inc" || fail "Display helper missing."
-gunslugs2_display_setup || fail "Use auto or WIDTHxHEIGHT in resolution.txt."
+"$JAVA_HOME/bin/java" -Xmx64m -cp runtime/gunslugs2-host.jar org.portmaster.gunslugs2.VerifyGame "$GAMEDIR/$jar_filename" || { pm_message "Gunslugs 2: Unsupported or damaged game JAR. Check the README checksum. See gunslugs2/log.txt."; sleep 5; exit 1; }
+source "$GAMEDIR/display.inc" || { pm_message "Gunslugs 2: Display helper missing. See gunslugs2/log.txt."; sleep 5; exit 1; }
+gunslugs2_display_setup || { pm_message "Gunslugs 2: Use auto or WIDTHxHEIGHT in resolution.txt. See gunslugs2/log.txt."; sleep 5; exit 1; }
 printf 'Firmware: %s; display: %s\n' "$CFW_NAME" "$gunslugs2_display_description"
 export SDL_GAMECONTROLLERCONFIG="$sdl_controllerconfig"
 export HOTKEY=back
 $GPTOKEYB2 java -c "$GAMEDIR/gunslugs2.ini" &
-mapper_pid=$!
 pm_platform_helper "$JAVA_HOME/bin/java"
 
-weston_started=1
 $ESUDO env "${display_env[@]}" "$weston_dir/westonwrap.sh" headless noop kiosk crusty_glx_gl4es \
   "PATH=$JAVA_HOME/bin:$PATH" "JAVA_HOME=$JAVA_HOME" "HOME=$SAVEDIR" \
   "XDG_DATA_HOME=$SAVEDIR" "XDG_CONFIG_HOME=$SAVEDIR/config" \
   "XDG_CACHE_HOME=$CACHEDIR" "WAYLAND_DISPLAY=" \
   "$JAVA_HOME/bin/java" -Xms32m -Xmx256m -XX:+UseSerialGC \
   "-Duser.home=$SAVEDIR" "-Djava.io.tmpdir=$CACHEDIR" \
-  "-Dgunslugs2.jar=$GAMEDIR/$jar_filename" "-Dgunslugs2.saves=$SAVEDIR" \
+  "-Dgunslugs2.jar=$GAMEDATADIR/$jar_filename" "-Dgunslugs2.saves=$SAVEDIR" \
   -Dgunslugs2.fullscreen=true "${display_java[@]}" \
-  -cp "$GAMEDIR/runtime/gunslugs2-host.jar:$GAMEDIR/$jar_filename" org.portmaster.gunslugs2.Main
+  -cp "$GAMEDIR/runtime/gunslugs2-host.jar:$GAMEDATADIR/$jar_filename" org.portmaster.gunslugs2.Main
+  
+$ESUDO "$weston_dir/westonwrap.sh" cleanup
+if [[ "$PM_CAN_MOUNT" != "N" ]]; then
+  $ESUDO umount "${weston_dir}"
+  $ESUDO umount "${JAVA_HOME}"
+fi
 
-status=$?
-cleanup
-exit "$status"
+pm_finish

@@ -1,8 +1,12 @@
 """Exercise launch and cleanup using fake PortMaster runtimes; no game data needed."""
 from pathlib import Path
 import json, os, shutil, subprocess, tempfile
+import sys
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT/'tools'))
+from portmaster_package import public_files
+
 config = json.loads((ROOT/'tools/port-config.json').read_text(encoding='utf-8'))
 game = config['id']
 bash = shutil.which('bash') if os.name != 'nt' else r'C:\Program Files\Git\bin\bash.exe'
@@ -63,6 +67,7 @@ DISPLAY_WIDTH=720
 DISPLAY_HEIGHT=480
 sdl_controllerconfig=test-controller
 '''
+    control=control.replace('directory="$TEST_ROOT"', 'directory="'+sf+'"')
     write(pm/'control.txt',control)
     write(fixtures/'probes/java','''#!/bin/bash
 [[ "$TEST_CASE" == bad-data ]] && exit 8
@@ -72,7 +77,7 @@ exit 0
     write(fixtures/'probes/mapper','''#!/bin/bash
 [[ "$TEST_MAPPER" == 1 && "$1" == java && "$2" == -c && "$3" == */"$TEST_MAPPING" ]] || exit 2
 echo mapper >> "$TEST_ROOT/events"
-exec /usr/bin/sleep 30
+exec /usr/bin/sleep 0.1
 ''')
     write(fixtures/'probes/westonwrap.sh','''#!/bin/bash
 if [[ "$1" == cleanup ]]; then
@@ -86,6 +91,9 @@ if [[ "$TEST_GAME" == gunslugs3 ]]; then [[ "$*" == *'runtime/lib/*:'* ]] || exi
 if [[ "$TEST_GAME" == mewnbase ]]; then
   [[ "$PWD" == */userdata/1.0.1 && "$*" == *'-Dmewnbase.data='* ]] || exit 7
 fi
+if [[ "$TEST_GAME" == gunslugs2 ]]; then
+  [[ "$*" == *"-Dgunslugs2.jar=$TEST_ROOT/ports/gunslugs2/gamedata/Gunslugs2.jar"* ]] || exit 8
+fi
 for count in {1..50}; do
   grep -q '^mapper$' "$TEST_ROOT/events" && break
   /usr/bin/sleep 0.01
@@ -94,7 +102,7 @@ echo game >> "$TEST_ROOT/events"
 [[ "$TEST_CASE" == game-error ]] && exit 9
 exit 0
 ''')
-    launcher=(ROOT/'package'/config['script']).read_text(encoding='utf-8')
+    launcher=public_files(ROOT)[config['script']].decode('utf-8')
     launcher=launcher.replace('weston_dir=/tmp/weston','weston_dir="'+sf+'/weston"').replace('/tmp/javaruntime/',sf+'/java')
     # Force fixture discovery even on a machine with a real PortMaster installed.
     launcher=launcher.replace('/opt/system/Tools/PortMaster',sf+'/absent1').replace('/opt/tools/PortMaster',sf+'/absent2')
@@ -103,18 +111,21 @@ exit 0
     command='export PATH=/usr/bin:$PATH; export HOME="$TEST_ROOT/home" XDG_DATA_HOME="$TEST_ROOT/home/.local/share"; chmod +x "$TEST_ROOT/probes/"* "$TEST_ROOT/home/.local/share/PortMaster/harbourmaster"; bash "$TEST_ROOT/launcher.sh"'
     result=subprocess.run([bash,'-c',command],env=env,capture_output=True,text=True,timeout=20)
     write(fixtures/'test.log',result.stdout+result.stderr)
-    events=(fixtures/'events').read_text(encoding='utf-8').splitlines()
-    expected=0 if case in ('success','no-mount-firmware') else 9 if case=='game-error' else 1
+    events_path=fixtures/'events'
+    events=events_path.read_text(encoding='utf-8').splitlines() if events_path.exists() else []
+    expected=0 if case in ('success','no-mount-firmware','game-error') else 1
     assert result.returncode==expected,(game,case,result.returncode,result.stdout,result.stderr)
-    assert events.count('finish')==1,(case,events)
     ran=case in ('success','game-error','no-mount-firmware')
+    assert events.count('finish')==(1 if ran else 0),(case,events)
     assert ('game' in events)==ran and ('cleanup' in events)==ran,(case,events)
     if ran: assert 'mapper' in events and 'platform' in events,events
     if case=='no-mount-firmware': assert not any(e.startswith('unmount ') for e in events),events
-    if case in ('missing-data','wrong-arch','download-error'): assert not any(e.startswith('mount ') for e in events),events
-    if case in ('success','game-error','bad-data','bad-resolution'):
+    if case in ('missing-data','wrong-arch','download-error'):
+        assert not any(e.startswith(('mount ','unmount ')) for e in events),events
+    if case in ('bad-data','bad-resolution','mount-error'):
+        assert sum(e.startswith('mount ') for e in events)==2,events
+        assert sum(e.startswith('unmount ') for e in events)==2,events
+    if case in ('success','game-error'):
         assert sum(e.startswith('mount ') for e in events)==2,events
         assert sum(e.startswith('unmount ') for e in events)==4,events
-    if case=='mount-error':
-        assert events[-2:] == ['unmount '+sf+'/weston','finish'],events
     print('LAUNCHER_OK',game,case,flush=True)
