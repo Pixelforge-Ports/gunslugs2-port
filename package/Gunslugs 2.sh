@@ -21,7 +21,7 @@ java_runtime="zulu17.54.21-ca-jre17.0.13-linux"
 jar_filename="Gunslugs2.jar"
 
 cd "$GAMEDIR" || { pm_message "Gunslugs 2: game folder missing."; pm_finish; exit 1; }
-exec > >(tee "$GAMEDIR/log.txt") 2>&1
+> "$GAMEDIR/log.txt" && exec > >(tee "$GAMEDIR/log.txt") 2>&1
 
 SAVEDIR="$GAMEDIR/saves/"
 CACHEDIR="$GAMEDIR/cache/"
