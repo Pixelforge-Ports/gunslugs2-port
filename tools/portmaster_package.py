@@ -20,7 +20,7 @@ def game_data_path(root, config):
     if len(found) != 1:
         raise ValueError('port.json must specify one consistent game-data destination')
     relative = PurePosixPath(found.pop())
-    if relative.is_absolute() or '..' in relative.parts or relative.name != config['game_file']:
+    if relative.is_absolute() or '..' in relative.parts or relative.as_posix() != config['game_file']:
         raise ValueError('Unsafe game-data destination in package/port.json')
     return Path(*relative.parts)
 
@@ -39,7 +39,10 @@ def public_files(root):
         for entry in json.loads(lock.read_text(encoding='utf-8')):
             if entry['test_only']:
                 continue
-            name = game+'/runtime/lib/'+entry['name']
+            library_dir = Path(entry.get('directory', 'runtime/lib'))
+            if library_dir.is_absolute() or '..' in library_dir.parts:
+                raise ValueError('Unsafe runtime library directory: '+str(library_dir))
+            name = (Path(game)/library_dir/entry['name']).as_posix()
             if hashlib.sha256((package/name).read_bytes()).hexdigest() != entry['sha256']:
                 raise ValueError('Runtime checksum mismatch: '+name)
             names.append(name)

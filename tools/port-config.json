@@ -2,8 +2,9 @@
   "id": "gunslugs2",
   "title": "Gunslugs 2",
   "script": "Gunslugs 2.sh",
-  "zip": "Gunslugs2.zip",
-  "game_file": "Gunslugs2.jar",
+  "zip": "gunslugs2.zip",
+  "game_file": "gamedata/Gunslugs2.jar",
+  "directories": ["gamedata"],
   "mapping": "gunslugs2.ini",
   "runtime_libraries": false
 }

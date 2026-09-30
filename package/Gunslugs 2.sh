@@ -28,8 +28,11 @@ CACHEDIR="$GAMEDIR/cache/"
 
 $ESUDO mkdir -p "$SAVEDIR" "$CACHEDIR" || { pm_message "Gunslugs 2: Cannot create game data and save folders. See gunslugs2/log.txt."; sleep 5; exit 1; }
 [ "$DEVICE_ARCH" = aarch64 ] || { pm_message "Gunslugs 2: 64-bit ARM firmware is required. See gunslugs2/log.txt."; sleep 5; exit 1; }
-[ "$(getconf LONG_BIT)" = 64 ] || { pm_message "Gunslugs 2: 64-bit userland is required. See gunslugs2/log.txt."; sleep 5; exit 1; }
-[ -f "$GAMEDIR/$jar_filename" ] || { pm_message "Gunslugs 2: Copy your owned Gunslugs 2.jar to gunslugs2/gamedata/Gunslugs 2.jar. See gunslugs2/log.txt."; sleep 5; exit 1; }
+if command -v getconf >/dev/null 2>&1; then
+  userland_bits=$(getconf LONG_BIT 2>/dev/null || true)
+  [ -z "$userland_bits" ] || [ "$userland_bits" = 64 ] || { pm_message "Gunslugs 2: 64-bit userland is required. See gunslugs2/log.txt."; sleep 5; exit 1; }
+fi
+[ -f "$GAMEDATADIR/$jar_filename" ] || { pm_message "Gunslugs 2: Copy your owned Gunslugs 2.jar to gunslugs2/gamedata/Gunslugs 2.jar. See gunslugs2/log.txt."; sleep 5; exit 1; }
 [ -n "$GPTOKEYB2" ] || { pm_message "Gunslugs 2: Update PortMaster for controller support. See gunslugs2/log.txt."; sleep 5; exit 1; }
 
 weston_dir=/tmp/weston
@@ -64,7 +67,7 @@ $ESUDO mount "$controlfolder/libs/${java_runtime}.squashfs" "$JAVA_HOME" \
   || { pm_message "Gunslugs 2: Cannot mount Java. See gunslugs2/log.txt."; sleep 5; exit 1; }
 export PATH="$JAVA_HOME/bin:$PATH"
 
-"$JAVA_HOME/bin/java" -Xmx64m -cp runtime/gunslugs2-host.jar org.portmaster.gunslugs2.VerifyGame "$GAMEDIR/$jar_filename" || { pm_message "Gunslugs 2: Unsupported or damaged game JAR. Check the README checksum. See gunslugs2/log.txt."; sleep 5; exit 1; }
+"$JAVA_HOME/bin/java" -Xmx64m -cp runtime/gunslugs2-host.jar org.portmaster.gunslugs2.VerifyGame "$GAMEDATADIR/$jar_filename" || { pm_message "Gunslugs 2: Unsupported or damaged game JAR. Check the README checksum. See gunslugs2/log.txt."; sleep 5; exit 1; }
 source "$GAMEDIR/display.inc" || { pm_message "Gunslugs 2: Display helper missing. See gunslugs2/log.txt."; sleep 5; exit 1; }
 gunslugs2_display_setup || { pm_message "Gunslugs 2: Use auto or WIDTHxHEIGHT in resolution.txt. See gunslugs2/log.txt."; sleep 5; exit 1; }
 printf 'Firmware: %s; display: %s\n' "$CFW_NAME" "$gunslugs2_display_description"
@@ -73,7 +76,7 @@ export HOTKEY=back
 $GPTOKEYB2 java -c "$GAMEDIR/gunslugs2.ini" &
 pm_platform_helper "$JAVA_HOME/bin/java"
 
-$ESUDO env "${display_env[@]}" "$weston_dir/westonwrap.sh" headless noop kiosk crusty_glx_gl4es \
+$ESUDO env "${display_env[@]}" "LD_LIBRARY_PATH=$GAMEDIR/libs.${DEVICE_ARCH}:$LD_LIBRARY_PATH" "$weston_dir/westonwrap.sh" headless noop kiosk crusty_glx_gl4es \
   "PATH=$JAVA_HOME/bin:$PATH" "JAVA_HOME=$JAVA_HOME" "HOME=$SAVEDIR" \
   "XDG_DATA_HOME=$SAVEDIR" "XDG_CONFIG_HOME=$SAVEDIR/config" \
   "XDG_CACHE_HOME=$CACHEDIR" "WAYLAND_DISPLAY=" \
