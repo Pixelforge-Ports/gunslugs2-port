@@ -2,8 +2,9 @@
 from pathlib import Path, PurePosixPath
 import hashlib
 import json
+import os
 import re
-import shutil
+import stat
 import zipfile
 
 def settings(root):
@@ -77,6 +78,7 @@ def installed_name(name, config):
 def export(root):
     root = Path(root)
     config = settings(root)
+    game = config['id']
     files = public_files(root)
     directories = public_directories(root)
     tree = root/'ports'/config['id']
@@ -90,17 +92,63 @@ def export(root):
         raise ValueError('Generated port path escapes ports/: '+str(tree)) from error
     if tree_resolved == ports_resolved or tree.is_symlink():
         raise ValueError('Refusing unsafe generated port path: '+str(tree))
-    if tree.exists():
-        shutil.rmtree(tree)
-    tree.mkdir(parents=True)
+    tree.mkdir(parents=True, exist_ok=True)
+
+    data_path = game_data_path(root, config)
+    data_directory = (tree/game/data_path.parent).resolve()
+    data_directory.relative_to(tree.resolve())
+    manifest = root/'build/portmaster-export.json'
+    previous = []
+    if manifest.is_file():
+        saved = json.loads(manifest.read_text(encoding='utf-8'))
+        previous = saved.get('files', []) if isinstance(saved, dict) else saved
+        if not isinstance(previous, list) or not all(isinstance(name, str) for name in previous):
+            raise ValueError('Invalid generated port manifest: '+str(manifest))
+
+    for name in previous:
+        if name in files:
+            continue
+        relative = PurePosixPath(name)
+        if relative.is_absolute() or '..' in relative.parts or not relative.parts:
+            raise ValueError('Unsafe path in generated port manifest: '+name)
+        target = tree.joinpath(*relative.parts)
+        resolved = target.resolve()
+        resolved.relative_to(tree.resolve())
+        if resolved == data_directory or data_directory in resolved.parents:
+            continue
+        if target.is_symlink():
+            raise ValueError('Refusing to remove generated path through a symlink: '+str(target))
+        if target.is_file():
+            target.chmod(target.stat().st_mode | stat.S_IWRITE)
+            target.unlink()
+
     for name in directories:
         target = (tree/name.rstrip('/')).resolve()
         target.relative_to(tree.resolve())
         target.mkdir(parents=True, exist_ok=True)
     for name, data in files.items():
         target = tree/name
+        if target.is_symlink():
+            raise ValueError('Refusing to overwrite generated path through a symlink: '+str(target))
         target.parent.mkdir(parents=True, exist_ok=True)
+        if target.exists():
+            target.chmod(target.stat().st_mode | stat.S_IWRITE)
         target.write_bytes(data)
+
+    for directory in sorted((path for path in tree.rglob('*') if path.is_dir()),
+                            key=lambda path: len(path.parts), reverse=True):
+        resolved = directory.resolve()
+        if resolved == data_directory or data_directory in resolved.parents or resolved in data_directory.parents:
+            continue
+        try:
+            directory.rmdir()
+        except OSError:
+            pass
+
+    manifest.parent.mkdir(parents=True, exist_ok=True)
+    temporary_manifest = manifest.with_suffix('.json.tmp')
+    temporary_manifest.write_text(json.dumps({'files': sorted(files)}), encoding='utf-8')
+    os.replace(temporary_manifest, manifest)
     destination_dir = root/'dist'
     destination_dir.mkdir(parents=True, exist_ok=True)
     destination = destination_dir/config['zip']

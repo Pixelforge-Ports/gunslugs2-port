@@ -135,10 +135,14 @@ def verify(root):
                     for name in host.namelist()), 'Game or compile-only classes leaked into host')
 
     tree = root/'ports'/game
+    data_directory = (Path(game)/game_data_path(root, config).parent).as_posix()
     for name, data in files.items():
         require((tree/name).read_bytes() == data, 'Stale public tree: '+name)
     expected_tree_files = set(files)
-    actual_tree_files = {path.relative_to(tree).as_posix() for path in tree.rglob('*') if path.is_file()}
+    actual_tree_files = {
+        path.relative_to(tree).as_posix() for path in tree.rglob('*')
+        if path.is_file() and not path.relative_to(tree).as_posix().startswith(data_directory+'/')
+    }
     require(actual_tree_files == expected_tree_files, 'Port source folder must contain only exported package files')
     require(not (tree/'testing_thread.txt').exists(), 'Testing thread must not be copied to the port source folder')
     expected_tree_directories = {name.rstrip('/') for name in directories}
@@ -147,7 +151,13 @@ def verify(root):
         while str(parent) not in ('', '.'):
             expected_tree_directories.add(parent.as_posix())
             parent = parent.parent
-    actual_tree_directories = {path.relative_to(tree).as_posix() for path in tree.rglob('*') if path.is_dir()}
+    actual_tree_directories = {
+        path.relative_to(tree).as_posix() for path in tree.rglob('*')
+        if path.is_dir() and path.relative_to(tree).as_posix() != data_directory
+        and not path.relative_to(tree).as_posix().startswith(data_directory+'/')
+    }
+    if (tree/data_directory).is_dir():
+        actual_tree_directories.add(data_directory)
     require(actual_tree_directories == expected_tree_directories, 'Port source folder contains stale directories')
     print('PACKAGE_OK', config['zip'], len(expected), 'files and', len(expected_directories), 'directories')
 
