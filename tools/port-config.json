@@ -4,7 +4,7 @@
   "script": "Gunslugs 2.sh",
   "zip": "gunslugs2.zip",
   "game_file": "gamedata/Gunslugs2.jar",
-  "directories": ["gamedata"],
+  "directories": ["gamedata", "libs.aarch64"],
   "mapping": "gunslugs2.ini",
-  "runtime_libraries": false
+  "runtime_libraries": true
 }

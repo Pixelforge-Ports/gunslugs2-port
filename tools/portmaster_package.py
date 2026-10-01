@@ -32,6 +32,7 @@ def public_files(root):
     game = config['id']
     names = [config['script'], 'port.json', 'README.md', 'gameinfo.xml', 'screenshot.png', 'cover.png',
              game+'/display.inc', game+'/'+config['mapping'],
+             game+'/gamedata/PLACE_GAMEDATA_HERE.txt',
              game+'/runtime/'+game+'-host.jar']
     names += [p.relative_to(package).as_posix()
               for p in sorted((package/game/'licenses').iterdir()) if p.is_file()]

@@ -141,7 +141,10 @@ def verify(root):
     expected_tree_files = set(files)
     actual_tree_files = {
         path.relative_to(tree).as_posix() for path in tree.rglob('*')
-        if path.is_file() and not path.relative_to(tree).as_posix().startswith(data_directory+'/')
+        if path.is_file() and (
+            not path.relative_to(tree).as_posix().startswith(data_directory+'/')
+            or path.relative_to(tree).as_posix() in expected_tree_files
+        )
     }
     require(actual_tree_files == expected_tree_files, 'Port source folder must contain only exported package files')
     require(not (tree/'testing_thread.txt').exists(), 'Testing thread must not be copied to the port source folder')
