@@ -105,8 +105,7 @@ a supplied archive's fingerprint; it does not participate in compilation. Downlo
 public compile dependency does not supply the commercial game. Copy the owned files after installing.
 
 Run `bash tests/verify_display.sh` for display-helper checks. Run `python tests/verify_launcher.py` for lifecycle checks. These tests use
-mock runtimes and do not mount or run games. See `VALIDATION.md` for the recorded checks
-and `testing_thread.txt` for the Discord testing post. Upload source files using Git;
+mock runtimes and do not mount or run games. See `testing_thread.txt` for the Discord testing post. Upload source files using Git;
 `build/`, `dist/`, generated `ports/` and owned data are excluded by `.gitignore`.
 
 The Discord draft stays in source `testing_thread.txt`; it is not installed by the ZIP.
