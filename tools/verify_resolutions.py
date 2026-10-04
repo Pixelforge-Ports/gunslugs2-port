@@ -13,9 +13,13 @@ def main():
     parser.add_argument('--jdk',required=True,type=Path)
     parser.add_argument('--java',required=True,type=Path)
     parser.add_argument('--game-jar',required=True,type=Path)
+    parser.add_argument('--host',type=Path,help='Fresh compiled host to test without changing package/')
     args = parser.parse_args()
     jdk, java, game = args.jdk.resolve(), args.java.resolve(), args.game_jar.resolve()
-    host = ROOT/'package/gunslugs2/runtime/gunslugs2-host.jar'
+    host = args.host or ROOT/'build/artifacts/gunslugs2-host.jar'
+    if not args.host and not host.is_file():
+        host = ROOT/'package/gunslugs2/runtime/gunslugs2-host.jar'
+    host = host.resolve()
     tests = ROOT/'build/test-classes'; tests.mkdir(parents=True,exist_ok=True)
     subprocess.run([str(jdk/'bin'/('javac.exe' if os.name=='nt' else 'javac')),'--release','8','-Xlint:-options',
                     '-cp',os.pathsep.join((str(host),str(game))),'-d',str(tests),
@@ -32,7 +36,9 @@ def main():
             subprocess.run(command,cwd=out,stdout=log,stderr=subprocess.STDOUT,check=True,timeout=180)
         text = (out/'run.log').read_text(encoding='utf-8')
         assert 'GAMEPLAY_OK' in text, text
-        assert f'GAME_RESIZE_OK {width}x{height}' in text, text
+        logical_width = 810 if width * 9 < height * 16 else 960
+        assert f'GAME_RESIZE_OK {width}x{height} view={logical_width}x540' in text, text
+        assert f'pixels:{logical_width // 3}x180' in text, 'Game camera did not use the selected aspect ratio'
         classes = (out/'classes.log').read_text(encoding='utf-8')
         assert 'com.codedisaster.steamworks.SteamAPI source:' not in classes
         assert 'com.studiohartman.jamepad.ControllerManager source:' not in classes

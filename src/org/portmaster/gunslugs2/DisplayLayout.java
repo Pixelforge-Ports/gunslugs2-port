@@ -1,14 +1,16 @@
 package org.portmaster.gunslugs2;
 
-/** Preserve the game's minimum 16:9 view; expand the view on wider screens. */
+/** Use a 3:2 game view on narrow displays; retain 16:9 or wider on wide displays. */
 public final class DisplayLayout {
     public int screenWidth = 640, screenHeight = 480;
-    public int gameWidth = 960, gameHeight = 540;
-    public int x, y, width = 640, height = 360;
+    public int gameWidth = 810, gameHeight = 540;
+    public int x, y = 26, width = 640, height = 427;
     public void resize(int w, int h) {
         if (w < 160 || h < 160) return;
         screenWidth = w; screenHeight = h;
-        gameWidth = Math.max(960, (int)Math.round(540.0 * w / h));
+        // Keep the same vertical game scale while selecting the horizontal field of view.
+        gameWidth = (long)w * 9 < (long)h * 16
+            ? 810 : Math.max(960, (int)Math.round(540.0 * w / h));
         double scale = Math.min((double)w / gameWidth, (double)h / gameHeight);
         width = (int)Math.round(gameWidth * scale);
         height = (int)Math.round(gameHeight * scale);
