@@ -2,14 +2,13 @@ Gunslugs 2 - PortMaster testing
 Porter: Pixelforge Ports (Ronax)
 
 Game: https://www.gog.com/en/game/gunslugs_2
-Package: Gunslugs2.zip (BYO data; attach the built ZIP to this post)
-
+Package: Gunslugs2.zip
 Install:
 Update PortMaster, put Gunslugs2.zip in its autoinstall folder and open PortMaster.
 Stay online for the Java 17 and Westonpack downloads if needed.
 Supply Gunslugs2.jar from your owned Windows build (fingerprint listed below).
-Destination: <ports directory>/gunslugs2/Gunslugs2.jar.
-On muOS: <SD card>/ports/gunslugs2/Gunslugs2.jar.
+Destination: <ports directory>/gunslugs2/gamedata/Gunslugs2.jar.
+
 Download the full Windows offline installer from your GOG library, install it
 on Windows or extract with innoextract, then copy the archive unchanged.
 See the installed gunslugs2.md for the checksum and manual installation instructions.
@@ -37,18 +36,20 @@ Controls:
 Use the game's default keyboard bindings. Start sends **O** for options.
 
 Testing checklist (include exact device, firmware version, graphics driver and result; mark only configurations you tested):
-[ ] muOS: RG34XX SP / other RGXX; fbdev or LibMali
-[ ] ROCKNIX: specify device and Panfrost or LibMali
+[x] muOS: RG34XX SP / other RGXX; fbdev or LibMali
+[x] ROCKNIX: Adreno
+[ ] ROCKNIX: Panfrost
+[ ] ROCKNIX: LibMali
 [ ] dArkOS: R36S; KMSDRM / LibMali
 [ ] Knulli: specify device; KMSDRM / LibMali
 [ ] AmberELEC: specify device; legacy LibMali
 [ ] ArkOS (optional): specify device and graphics driver
 [ ] Other compatible ARM64 firmware: specify device and graphics driver
 [ ] 640x480
-[ ] 720x480
+[x] 720x480
 [ ] 720x720
 [ ] 1024x768
-[ ] 1280x720
+[x] 1280x720
 
 Please test startup, menus, all controls, sound/music, normal gameplay speed,
 save/reload, suspend/resume and exit. Report performance during actual gameplay.

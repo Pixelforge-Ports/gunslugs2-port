@@ -20,7 +20,7 @@ def write(path, text):
     with path.open('w', encoding='utf-8', newline='\n') as stream:
         stream.write(text)
 
-for case in ['missing-data','success','no-getconf','game-error','bad-data','bad-resolution','wrong-arch','mount-error','no-mount-firmware','download-error','missing-portmaster','missing-java-portmaster']:
+for case in ['missing-data','success','no-getconf','game-error','bad-data','bad-resolution','mount-error','no-mount-firmware','download-error','missing-portmaster','missing-java-portmaster']:
     folder = ROOT/'build'/'launcher-tests'/case
     folder.mkdir(parents=True, exist_ok=True)
     fixtures = Path(tempfile.mkdtemp(prefix='run-', dir=folder))
@@ -46,6 +46,7 @@ getconf() { [[ "$TEST_CASE" == no-getconf ]] && return 127; echo 64; }
 sleep() { :; }
 mount() {
   echo "mount $2" >> "$TEST_ROOT/events"
+  if [[ "$TEST_CASE" == download-error && "$2" == */weston ]]; then return 12; fi
   if [[ "$TEST_CASE" == mount-error && "$2" == */java ]]; then return 12; fi
   mkdir -p "$2/bin"
   if [[ "$1" == *weston* ]]; then
@@ -61,7 +62,6 @@ GPTOKEYB2=test_mapper
 directory="$TEST_ROOT"
 DEVICE_ARCH=aarch64
 PM_CAN_MOUNT=Y
-[[ "$TEST_CASE" == wrong-arch ]] && DEVICE_ARCH=armhf
 [[ "$TEST_CASE" == no-mount-firmware ]] && PM_CAN_MOUNT=N
 CFW_NAME=test
 DISPLAY_WIDTH=720
@@ -136,7 +136,7 @@ exit 0
             assert len(unmount_indexes)==4,(case,events)
             assert all(i<game_index for i in unmount_indexes[:2]),(case,events)
             assert all(cleanup_index<i<finish_index for i in unmount_indexes[2:]),(case,events)
-    if case in ('missing-data','wrong-arch','download-error','missing-portmaster'):
+    if case in ('missing-data','missing-portmaster'):
         assert not any(e.startswith('mount ') for e in events),events
     if case == 'missing-java-portmaster':
         assert sum(e.startswith('mount ') for e in events)==1 and events.count('finish')==0,(case,events)

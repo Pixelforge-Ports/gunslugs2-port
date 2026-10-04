@@ -1,88 +1,163 @@
-"""Build one universal BYO-data ZIP from an explicit redistributable file list."""
+"""Export the unchanged public package files into a PortMaster ZIP and source tree."""
 from pathlib import Path, PurePosixPath
 import hashlib
 import json
 import os
 import re
+import shutil
 import stat
 import zipfile
+
 
 def settings(root):
     return json.loads((Path(root)/'tools/port-config.json').read_text(encoding='utf-8'))
 
+
 def game_data_path(root, config):
     root = Path(root)
     metadata = json.loads((root/'package/port.json').read_text(encoding='utf-8'))
+    attr = metadata.get('attr')
+    if not isinstance(attr, dict):
+        raise ValueError('package/port.json must contain an attr object')
     marker = '<ports directory>/' + config['id'] + '/'
     found = set()
-    for text in (metadata['attr'].get('inst', ''), metadata['attr'].get('inst_md', '')):
+    for text in (attr.get('inst'), attr.get('inst_md')):
+        if not isinstance(text, str):
+            continue
         for match in re.finditer(re.escape(marker) + r'([^\s`]+)', text):
             found.add(match.group(1).rstrip('.,;:'))
-    if len(found) != 1:
-        raise ValueError('port.json must specify one consistent game-data destination')
-    relative = PurePosixPath(found.pop())
-    if relative.is_absolute() or '..' in relative.parts or relative.as_posix() != config['game_file']:
-        raise ValueError('Unsafe game-data destination in package/port.json')
+
+    configured = PurePosixPath(str(config['game_file']).replace('\\', '/'))
+    if configured.is_absolute() or not configured.parts or any(part in ('', '.', '..') for part in configured.parts):
+        raise ValueError('Unsafe game-data destination in tools/port-config.json')
+    if found:
+        if len(found) != 1:
+            raise ValueError('port.json must specify one consistent game-data destination')
+        relative = PurePosixPath(found.pop())
+        if relative.is_absolute() or not relative.parts or any(part in ('', '.', '..') for part in relative.parts):
+            raise ValueError('Unsafe game-data destination in package/port.json')
+        if relative.as_posix() != configured.as_posix():
+            raise ValueError('Game-data destination in package/port.json does not match port-config.json')
+    else:
+        relative = configured
     return Path(*relative.parts)
 
-def public_files(root):
+
+def _host_name(config):
+    return config['id']+'/runtime/'+config['id']+'-host.jar'
+
+
+def _generated_host(root, config, generated_host):
+    if generated_host is not None:
+        return Path(generated_host)
+    built = Path(root)/'build/artifacts'/(config['id']+'-host.jar')
+    return built if built.is_file() else None
+
+
+def public_files(root, generated_host=None):
     root = Path(root)
     config = settings(root)
     package = root/'package'
     game = config['id']
-    names = [config['script'], 'port.json', 'README.md', 'gameinfo.xml', 'screenshot.png', 'cover.png',
-             game+'/display.inc', game+'/'+config['mapping'],
-             game+'/gamedata/PLACE_GAMEDATA_HERE.txt',
-             game+'/runtime/'+game+'-host.jar']
-    names += [p.relative_to(package).as_posix()
-              for p in sorted((package/game/'licenses').iterdir()) if p.is_file()]
-    lock = root/'tools/runtime-lock.json'
-    if config.get('runtime_libraries'):
-        for entry in json.loads(lock.read_text(encoding='utf-8')):
-            if entry['test_only']:
-                continue
-            library_dir = Path(entry.get('directory', 'runtime/lib'))
-            if library_dir.is_absolute() or '..' in library_dir.parts:
-                raise ValueError('Unsafe runtime library directory: '+str(library_dir))
-            name = (Path(game)/library_dir/entry['name']).as_posix()
-            if hashlib.sha256((package/name).read_bytes()).hexdigest() != entry['sha256']:
-                raise ValueError('Runtime checksum mismatch: '+name)
-            names.append(name)
+    host_name = _host_name(config)
+    game_data = (PurePosixPath(game)/game_data_path(root, config).as_posix()).as_posix()
     files = {}
-    for name in names:
-        data = (package/name).read_bytes()
-        if name == 'port.json':
-            try:
-                json.loads(data.decode('utf-8'))
-            except (UnicodeDecodeError, json.JSONDecodeError) as error:
-                raise ValueError('Invalid package/port.json; fix the source file directly') from error
-        files[name] = data
+
+    for source in sorted(package.rglob('*')):
+        if source.is_symlink():
+            raise ValueError('Package must not contain symlinks: '+str(source))
+        if not source.is_file():
+            continue
+        name = source.relative_to(package).as_posix()
+        if source.name.lower() == 'testing_thread.txt':
+            continue
+        # Game archives are user-supplied BYO data. Only the port host JAR is distributable.
+        if name == game_data or (name.lower().endswith('.jar') and name != host_name):
+            continue
+        if source.name in ('.DS_Store', 'Thumbs.db', 'desktop.ini'):
+            continue
+        relative = PurePosixPath(name)
+        if relative.is_absolute() or not relative.parts or any(part in ('', '.', '..') for part in relative.parts):
+            raise ValueError('Unsafe path in package: '+name)
+        files[name] = source.read_bytes()
+
+    required = {
+        config['script'], 'port.json', 'README.md', 'gameinfo.xml', 'screenshot.png', 'cover.png',
+        game+'/display.inc', game+'/'+config['mapping'], host_name,
+    }
+    missing = sorted(required-set(files))
+    if missing:
+        raise ValueError('Missing required package file(s): '+', '.join(missing))
+
+    artifact = _generated_host(root, config, generated_host)
+    if artifact is not None:
+        if not artifact.is_file():
+            raise ValueError('Generated host JAR is missing: '+str(artifact))
+        files[host_name] = artifact.read_bytes()
+
+    if config.get('runtime_libraries'):
+        lock = root/'tools/runtime-lock.json'
+        for entry in json.loads(lock.read_text(encoding='utf-8')):
+            if entry.get('test_only'):
+                continue
+            directory = PurePosixPath(str(entry.get('directory', 'runtime/lib')).replace('\\', '/'))
+            filename = str(entry['name'])
+            if directory.is_absolute() or any(part in ('', '.', '..') for part in directory.parts):
+                raise ValueError('Unsafe runtime library directory: '+str(directory))
+            name = (PurePosixPath(game)/directory/filename).as_posix()
+            if name not in files:
+                raise ValueError('Runtime library missing from package: '+name)
+            if hashlib.sha256(files[name]).hexdigest() != entry['sha256']:
+                raise ValueError('Runtime checksum mismatch: '+name)
+
+    try:
+        json.loads(files['port.json'].decode('utf-8'))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError('Invalid package/port.json; fix the source file directly') from error
     return files
 
+
 def public_directories(root):
+    root = Path(root)
     config = settings(root)
+    package = root/'package'
     game = config['id']
     result = set()
+    for source in package.rglob('*'):
+        if source.is_symlink():
+            raise ValueError('Package must not contain symlinks: '+str(source))
+        if not source.is_dir():
+            continue
+        relative = source.relative_to(package).as_posix()
+        if relative == game:
+            continue
+        if not relative.startswith(game+'/'):
+            relative = game+'/'+relative
+        result.add(relative+'/')
     for raw in config.get('directories', []):
-        name = raw.replace('\\', '/').strip('/')
+        name = str(raw).replace('\\', '/').strip('/')
         parts = name.split('/') if name else []
         if not parts or any(part in ('', '.', '..') for part in parts):
-            raise ValueError('Invalid package directory: '+raw)
+            raise ValueError('Invalid package directory: '+str(raw))
         result.add(game+'/'+name+'/')
     return sorted(result)
 
-def installed_name(name, config):
-    if '/' not in name and name != config['script']:
-        return config['id']+'/'+(config['id']+'.md' if name == 'README.md' else name)
-    return name
 
-def export(root):
+def installed_name(name, config):
+    if name == config['script']:
+        return name
+    if name.startswith(config['id']+'/'):
+        return name
+    return config['id']+'/'+name
+
+
+def export(root, generated_host=None):
     root = Path(root)
     config = settings(root)
     game = config['id']
-    files = public_files(root)
+    files = public_files(root, generated_host)
     directories = public_directories(root)
-    tree = root/'ports'/config['id']
+    tree = root/'ports'/game
     ports_root = root/'ports'
     ports_root.mkdir(parents=True, exist_ok=True)
     ports_resolved = ports_root.resolve()
@@ -157,7 +232,8 @@ def export(root):
     temporary.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(temporary, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
         for name in sorted([*files, *directories]):
-            info = zipfile.ZipInfo(installed_name(name, config), (2026, 9, 12, 0, 0, 0))
+            installed = installed_name(name, config)
+            info = zipfile.ZipInfo(installed, (2026, 9, 12, 0, 0, 0))
             info.create_system = 3
             if name.endswith('/'):
                 info.external_attr = (0o40755 << 16) | 0x10
@@ -169,6 +245,7 @@ def export(root):
                 archive.writestr(info, files[name])
     temporary.replace(destination)
     print('Built', destination)
+
 
 if __name__ == '__main__':
     export(Path(__file__).resolve().parents[1])

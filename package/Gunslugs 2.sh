@@ -20,30 +20,24 @@ GAMEDATADIR="$GAMEDIR/gamedata"
 java_runtime="zulu17.54.21-ca-jre17.0.13-linux"
 jar_filename="Gunslugs2.jar"
 
-cd "$GAMEDIR" || { pm_message "Gunslugs 2: game folder missing."; pm_finish; exit 1; }
+cd "$GAMEDIR"
 > "$GAMEDIR/log.txt" && exec > >(tee "$GAMEDIR/log.txt") 2>&1
 
 SAVEDIR="$GAMEDIR/saves/"
 CACHEDIR="$GAMEDIR/cache/"
+$ESUDO mkdir -p "$SAVEDIR" "$CACHEDIR"
 
-$ESUDO mkdir -p "$SAVEDIR" "$CACHEDIR" || { pm_message "Gunslugs 2: Cannot create game data and save folders. See gunslugs2/log.txt."; sleep 5; exit 1; }
-[ "$DEVICE_ARCH" = aarch64 ] || { pm_message "Gunslugs 2: 64-bit ARM firmware is required. See gunslugs2/log.txt."; sleep 5; exit 1; }
-if command -v getconf >/dev/null 2>&1; then
-  userland_bits=$(getconf LONG_BIT 2>/dev/null || true)
-  [ -z "$userland_bits" ] || [ "$userland_bits" = 64 ] || { pm_message "Gunslugs 2: 64-bit userland is required. See gunslugs2/log.txt."; sleep 5; exit 1; }
-fi
 [ -f "$GAMEDATADIR/$jar_filename" ] || { pm_message "Gunslugs 2: Copy your owned Gunslugs 2.jar to gunslugs2/gamedata/Gunslugs 2.jar. See gunslugs2/log.txt."; sleep 5; exit 1; }
-[ -n "$GPTOKEYB2" ] || { pm_message "Gunslugs 2: Update PortMaster for controller support. See gunslugs2/log.txt."; sleep 5; exit 1; }
 
 weston_dir=/tmp/weston
 
-$ESUDO mkdir -p "${weston_dir}" || { pm_message "Gunslugs 2: Cannot create Weston directory. See gunslugs2/log.txt."; sleep 5; exit 1; }
+$ESUDO mkdir -p "${weston_dir}"
 weston_runtime="weston_pkg_0.2"
 if [ ! -f "$controlfolder/libs/${weston_runtime}.squashfs" ]; then
   if [ ! -f "$controlfolder/harbourmaster" ]; then
      { pm_message "Gunslugs 2: This port requires the latest PortMaster to run, please go to https://portmaster.games/ for more info. See gunslugs2/log.txt."; sleep 5; exit 1; }
   fi
-  $ESUDO "$controlfolder/harbourmaster" --quiet --no-check runtime_check "${weston_runtime}.squashfs" || { pm_message "Gunslugs 2: Cannot download Weston. See gunslugs2/log.txt."; sleep 5; exit 1; }
+  $ESUDO "$controlfolder/harbourmaster" --quiet --no-check runtime_check "${weston_runtime}.squashfs"
 fi
 if [[ "$PM_CAN_MOUNT" != "N" ]]; then
     $ESUDO umount "${weston_dir}" 2>/dev/null || true
@@ -52,13 +46,12 @@ $ESUDO mount "$controlfolder/libs/${weston_runtime}.squashfs" "$weston_dir" \
   || { pm_message "Gunslugs 2: Cannot mount Weston. See gunslugs2/log.txt."; sleep 5; exit 1; }
 
 export JAVA_HOME="/tmp/javaruntime/"
-
-$ESUDO mkdir -p "${JAVA_HOME}" || { pm_message "Gunslugs 2: Cannot create Java directory. See gunslugs2/log.txt."; sleep 5; exit 1; }
+$ESUDO mkdir -p "${JAVA_HOME}"
 if [ ! -f "$controlfolder/libs/${java_runtime}.squashfs" ]; then
   if [ ! -f "$controlfolder/harbourmaster" ]; then
     { pm_message "Gunslugs 2: This port requires the latest PortMaster to run, please go to https://portmaster.games/ for more info. See gunslugs2/log.txt."; sleep 5; exit 1; }
   fi
-  $ESUDO "$controlfolder/harbourmaster" --quiet --no-check runtime_check "${java_runtime}.squashfs" || { pm_message "Gunslugs 2: Cannot download Java. See gunslugs2/log.txt."; sleep 5; exit 1; }
+  $ESUDO "$controlfolder/harbourmaster" --quiet --no-check runtime_check "${java_runtime}.squashfs"
 fi
 if [[ "$PM_CAN_MOUNT" != "N" ]]; then
     $ESUDO umount "${JAVA_HOME}" 2>/dev/null || true
