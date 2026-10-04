@@ -81,6 +81,12 @@ def public_files(root, generated_host=None):
             raise ValueError('Unsafe path in package: '+name)
         files[name] = source.read_bytes()
 
+    artifact = _generated_host(root, config, generated_host)
+    if artifact is not None:
+        if not artifact.is_file():
+            raise ValueError('Generated host JAR is missing: '+str(artifact))
+        files[host_name] = artifact.read_bytes()
+
     required = {
         config['script'], 'port.json', 'README.md', 'gameinfo.xml', 'screenshot.png', 'cover.png',
         game+'/display.inc', game+'/'+config['mapping'], host_name,
@@ -88,12 +94,6 @@ def public_files(root, generated_host=None):
     missing = sorted(required-set(files))
     if missing:
         raise ValueError('Missing required package file(s): '+', '.join(missing))
-
-    artifact = _generated_host(root, config, generated_host)
-    if artifact is not None:
-        if not artifact.is_file():
-            raise ValueError('Generated host JAR is missing: '+str(artifact))
-        files[host_name] = artifact.read_bytes()
 
     if config.get('runtime_libraries'):
         lock = root/'tools/runtime-lock.json'
